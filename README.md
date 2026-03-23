@@ -42,7 +42,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "a2asearch": {
       "command": "npx",
-      "args": ["-y", "@a2asearch/mcp-server"]
+      "args": ["-y", "github:tadas-github/a2asearch-mcp"]
     }
   }
 }
@@ -57,11 +57,13 @@ Add to `.cursor/mcp.json`:
   "mcpServers": {
     "a2asearch": {
       "command": "npx",
-      "args": ["-y", "@a2asearch/mcp-server"]
+      "args": ["-y", "github:tadas-github/a2asearch-mcp"]
     }
   }
 }
 ```
+
+> **npm package coming soon.** Once published, replace `github:tadas-github/a2asearch-mcp` with `@a2asearch/mcp-server`.
 
 ### Cline / Continue
 
