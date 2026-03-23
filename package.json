@@ -1,0 +1,19 @@
+{
+  "name": "@a2asearch/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for searching and discovering AI agents, MCP servers, CLI tools and agent skills via A2ASearch",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "a2asearch-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["mcp", "ai-agents", "mcp-server", "search", "directory", "a2asearch"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.0.0"
+  }
+}
