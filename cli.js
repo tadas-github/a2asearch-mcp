@@ -76,9 +76,11 @@ const TYPE_MAP = {
 };
 
 async function fetch_json(url) {
-  const { default: fetch } = await import('node-fetch').catch(() => ({ default: globalThis.fetch }));
-  const res = await (fetch || globalThis.fetch)(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
+  }
   return res.json();
 }
 
@@ -95,9 +97,16 @@ async function getAgent(slug) {
 }
 
 function printResults(data) {
-  const { agents, pagination } = data.data !== undefined
+  let { agents, pagination } = data.data !== undefined
     ? { agents: data.data, pagination: data.pagination }
     : { agents: data.agents || [], pagination: data.pagination };
+  // Deduplicate by URL
+  const seen = new Set();
+  agents = agents.filter(a => {
+    if (seen.has(a.agentCardUrl)) return false;
+    seen.add(a.agentCardUrl);
+    return true;
+  });
 
   if (!agents || agents.length === 0) {
     console.log(`${DIM}No results found.${RESET}`);
@@ -145,19 +154,27 @@ async function main() {
   const jsonOutput = args.includes('--json');
   const isTop = args.includes('--top');
   const isNew = args.includes('--new');
-  const getSlug = args[args.indexOf('--get') + 1];
-  const typeArg = args[args.indexOf('--type') + 1];
-  const limitArg = args[args.indexOf('--limit') + 1];
+  const getIdx = args.indexOf('--get');
+  const getSlug = getIdx !== -1 ? args[getIdx + 1] : undefined;
+  const typeIdx = args.indexOf('--type');
+  const typeArg = typeIdx !== -1 ? args[typeIdx + 1] : undefined;
+  const limitIdx = args.indexOf('--limit');
+  const limitArg = limitIdx !== -1 ? args[limitIdx + 1] : undefined;
   const limit = limitArg ? parseInt(limitArg) : 10;
   const type = typeArg ? (TYPE_MAP[typeArg.toLowerCase()] || typeArg) : undefined;
 
-  // Remaining args = search query
-  const filteredArgs = args.filter((a, i) => {
-    const flags = ['--type', '--limit', '--top', '--new', '--get', '--json', '--help', '-h'];
-    if (flags.includes(a)) return false;
-    if (flags.includes(args[i - 1])) return false;
-    return true;
-  });
+  // Remaining args = search query (skip flags and their values)
+  const flags = new Set(['--type', '--limit', '--top', '--new', '--get', '--json', '--help', '-h']);
+  const filteredArgs = [];
+  let skipNext = false;
+  for (const a of args) {
+    if (skipNext) { skipNext = false; continue; }
+    if (flags.has(a)) {
+      if (a === '--type' || a === '--limit' || a === '--get') skipNext = true;
+      continue;
+    }
+    filteredArgs.push(a);
+  }
   const query = filteredArgs.join(' ');
 
   try {
