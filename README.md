@@ -63,7 +63,7 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-> **npm package coming soon.** Once published, replace `a2asearch-mcp` with `@a2asearch/mcp-server`.
+
 
 ### Cline / Continue
 
