@@ -1,20 +1,28 @@
 {
   "name": "a2asearch-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for searching and discovering AI agents, MCP servers, CLI tools and agent skills via A2ASearch",
   "main": "index.js",
   "type": "module",
   "bin": {
-    "a2asearch-mcp": "./index.js"
+    "a2asearch-mcp": "index.js",
+    "a2asearch": "cli.js"
   },
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": ["mcp", "ai-agents", "mcp-server", "search", "directory", "a2asearch"],
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "mcp-server",
+    "search",
+    "directory",
+    "a2asearch"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tadas-github/a2asearch-mcp.git"
+    "url": "git+https://github.com/tadas-github/a2asearch-mcp.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

@@ -88,3 +88,24 @@ The MCP server wraps the free [A2ASearch REST API](https://a2asearch.ai/api-docs
 ## License
 
 MIT
+
+## CLI Usage
+
+Search from your terminal:
+
+```bash
+# Search by keyword
+npx a2asearch-mcp playwright
+
+# Filter by type
+npx a2asearch-mcp --type mcp database
+
+# Top AI coding agents by stars
+npx a2asearch-mcp --type agent --top
+
+# Get full details
+npx a2asearch-mcp --get ollama
+
+# Newest additions
+npx a2asearch-mcp --new
+```
