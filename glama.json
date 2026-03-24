@@ -1,0 +1,46 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "a2asearch-mcp",
+  "version": "1.1.2",
+  "description": "MCP server for searching and discovering AI agents, MCP servers, CLI tools and agent skills via the A2ASearch directory (a2asearch.ai)",
+  "author": "tadas-github",
+  "license": "MIT",
+  "language": "javascript",
+  "type": "mcp_server",
+  "status": "stable",
+  "transport": ["stdio"],
+  "tools": 3,
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "mcp-server",
+    "search",
+    "directory",
+    "a2asearch",
+    "agent-discovery",
+    "cli-tools",
+    "agent-skills"
+  ],
+  "categories": [
+    "Search",
+    "AI Agents",
+    "Developer Tools",
+    "Directory"
+  ],
+  "homepage": "https://a2asearch.ai",
+  "repository": {
+    "url": "https://github.com/tadas-github/a2asearch-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "name": "a2asearch-mcp",
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["a2asearch-mcp"]
+      }
+    }
+  ]
+}
