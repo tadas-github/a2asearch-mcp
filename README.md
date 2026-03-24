@@ -96,18 +96,29 @@ MIT
 Search from your terminal:
 
 ```bash
+# Install globally
+npm install -g a2asearch-mcp
+
 # Search by keyword
-npx a2asearch-mcp playwright
+a2asearch playwright
 
 # Filter by type
-npx a2asearch-mcp --type mcp database
+a2asearch --type mcp database
 
 # Top AI coding agents by stars
-npx a2asearch-mcp --type agent --top
+a2asearch --type agent --top
 
 # Get full details
-npx a2asearch-mcp --get ollama
+a2asearch --get ollama
 
 # Newest additions
-npx a2asearch-mcp --new
+a2asearch --new
+```
+
+Or use without installing:
+
+```bash
+npx a2asearch-mcp -- playwright
+npx a2asearch-mcp -- --type mcp database
+npx a2asearch-mcp -- --get ollama
 ```
