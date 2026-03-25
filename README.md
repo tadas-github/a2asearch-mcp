@@ -92,6 +92,18 @@ The MCP server wraps the free [A2ASearch REST API](https://a2asearch.ai/api-docs
 
 MIT
 
+## Types
+
+The directory contains five types of entries, usable as filters in both the MCP tools and CLI:
+
+| Type | `--type` flag | MCP enum value |
+|------|--------------|----------------|
+| MCP Server | `mcp` | `MCP Server` |
+| CLI Tool | `cli` | `CLI Tool` |
+| AI Coding Agent | `agent` | `AI Coding Agent` |
+| Agent Skill | `skill` | `Agent Skill` |
+| A2A Agent | `a2a` | `A2A Agent` |
+
 ## CLI Usage
 
 Search from your terminal:
@@ -105,6 +117,8 @@ a2asearch playwright
 
 # Filter by type
 a2asearch --type mcp database
+a2asearch --type skill web browsing
+a2asearch --type cli llm
 
 # Top AI coding agents by stars
 a2asearch --type agent --top
@@ -121,5 +135,6 @@ Or use without installing:
 ```bash
 npx a2asearch-mcp -- playwright
 npx a2asearch-mcp -- --type mcp database
+npx a2asearch-mcp -- --type skill web browsing
 npx a2asearch-mcp -- --get ollama
 ```
