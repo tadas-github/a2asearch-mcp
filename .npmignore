@@ -1,0 +1,11 @@
+# Never ship secrets or local config
+.mcp*
+.env
+.env.*
+*.token
+*_token
+*_key
+*.secret
+node_modules/
+*.log
+.DS_Store
