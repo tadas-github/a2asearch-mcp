@@ -13,7 +13,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-const API_BASE = "https://a2asearch.ai/api/v1";
+const API_BASE = "https://www.a2asearch.ai/api/v1";
 
 const server = new Server(
   { name: "a2asearch", version: "1.0.0" },

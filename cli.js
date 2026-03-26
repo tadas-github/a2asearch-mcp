@@ -4,7 +4,7 @@
  * Search AI agents, MCP servers, CLI tools and agent skills from your terminal
  */
 
-const API = 'https://a2asearch.ai/api/v1';
+const API = 'https://www.a2asearch.ai/api/v1';
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
 const DIM = '\x1b[2m';
@@ -73,6 +73,7 @@ const TYPE_MAP = {
   agent: 'AI Coding Agent',
   skill: 'Agent Skill',
   a2a: 'A2A Agent',
+  tool: 'AI Tool',
 };
 
 async function fetch_json(url) {

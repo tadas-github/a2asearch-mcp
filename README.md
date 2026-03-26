@@ -1,6 +1,6 @@
 # A2ASearch MCP Server
 
-Search and discover AI agents, MCP servers, CLI tools and agent skills directly from Claude, Cursor, or any MCP client — powered by the [A2ASearch](https://a2asearch.ai) directory (4,800+ entries).
+Search and discover AI agents, MCP servers, CLI tools and agent skills directly from Claude, Cursor, or any MCP client — powered by the [A2ASearch](https://a2asearch.ai) directory (10,000+ entries).
 
 [![a2asearch-mcp MCP server](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp/badges/card.svg)](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp)
 [![a2asearch-mcp MCP server](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp/badges/score.svg)](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp)
@@ -103,6 +103,7 @@ The directory contains five types of entries, usable as filters in both the MCP 
 | AI Coding Agent | `agent` | `AI Coding Agent` |
 | Agent Skill | `skill` | `Agent Skill` |
 | A2A Agent | `a2a` | `A2A Agent` |
+| AI Tool | `tool` | `AI Tool` |
 
 ## CLI Usage
 
