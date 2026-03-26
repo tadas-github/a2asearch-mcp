@@ -6,12 +6,12 @@
     "url": "https://github.com/tadas-github/a2asearch-mcp",
     "source": "github"
   },
-  "version": "1.1.4",
+  "version": "1.1.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "a2asearch-mcp",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "transport": {
         "type": "stdio"
       },
