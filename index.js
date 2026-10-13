@@ -11,12 +11,14 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
+import { readFileSync } from "node:fs";
+import { fetchJson } from "./lib/api.js";
+import { AGENT_TYPES, validateArguments } from "./lib/validation.js";
 
-const API_BASE = "https://www.a2asearch.ai/api/v1";
+const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 const server = new Server(
-  { name: "a2asearch", version: "1.0.0" },
+  { name: "a2asearch", version },
   { capabilities: { tools: {} } }
 );
 
@@ -31,18 +33,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Returns name, description, type, stars, GitHub URL and capabilities for each result.",
       inputSchema: {
         type: "object",
+        additionalProperties: false,
         properties: {
           query: {
             type: "string",
+            minLength: 1,
             description: "Search query — e.g. 'database', 'browser automation', 'memory'",
           },
           type: {
             type: "string",
-            enum: ["MCP Server", "CLI Tool", "AI Coding Agent", "Agent Skill", "A2A Agent"],
+            enum: AGENT_TYPES,
             description: "Filter by agent type (optional)",
           },
           limit: {
-            type: "number",
+            type: "integer",
+            minimum: 1,
+            maximum: 20,
             description: "Number of results to return (1-20, default 10)",
             default: 10,
           },
@@ -57,9 +63,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Returns description, README, capabilities, stars, forks, languages and more.",
       inputSchema: {
         type: "object",
+        additionalProperties: false,
         properties: {
           slug: {
             type: "string",
+            minLength: 1,
+            pattern: "^[a-zA-Z0-9_-]+$",
             description: "Agent slug — e.g. 'playwright', 'ollama', 'claude-code', 'mem0'",
           },
         },
@@ -73,10 +82,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Use this to browse top agents by category.",
       inputSchema: {
         type: "object",
+        additionalProperties: false,
         properties: {
           type: {
             type: "string",
-            enum: ["MCP Server", "CLI Tool", "AI Coding Agent", "Agent Skill", "A2A Agent"],
+            enum: AGENT_TYPES,
             description: "Filter by type (optional — omit for all types)",
           },
           sort: {
@@ -86,7 +96,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             default: "stars",
           },
           limit: {
-            type: "number",
+            type: "integer",
+            minimum: 1,
+            maximum: 20,
             description: "Number of results (1-20, default 10)",
             default: 10,
           },
@@ -98,10 +110,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 // ── Tool handlers ──────────────────────────────────────────────────────────
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+  const { name, arguments: rawArgs } = request.params;
 
   try {
+    const args = validateArguments(name, rawArgs);
     if (name === "search_agents") {
       const { query, type, limit = 10 } = args;
       const params = new URLSearchParams({
@@ -110,9 +123,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       });
       if (type) params.set("type", type);
 
-      const res = await fetch(`${API_BASE}/agents?${params}`);
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = await res.json();
+      const data = await fetchJson(`agents?${params}`, { signal: extra.signal });
 
       const results = data.data.map((a) => ({
         name: a.name,
@@ -151,15 +162,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     if (name === "get_agent") {
       const { slug } = args;
-      const res = await fetch(`${API_BASE}/agent/${encodeURIComponent(slug)}`);
-      if (!res.ok) {
-        if (res.status === 404)
-          return {
-            content: [{ type: "text", text: `Agent "${slug}" not found.` }],
-          };
-        throw new Error(`API error: ${res.status}`);
+      let a;
+      try {
+        ({ data: a } = await fetchJson(`agent/${encodeURIComponent(slug)}`, { signal: extra.signal }));
+      } catch (error) {
+        if (error.status === 404) {
+          return { content: [{ type: "text", text: `Agent "${slug}" not found.` }], isError: true };
+        }
+        throw error;
       }
-      const { data: a } = await res.json();
 
       const summary = [
         `# ${a.name}`,
@@ -194,9 +205,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       });
       if (type) params.set("type", type);
 
-      const res = await fetch(`${API_BASE}/agents?${params}`);
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = await res.json();
+      const data = await fetchJson(`agents?${params}`, { signal: extra.signal });
 
       const label = type ? `${type}s` : "agents";
       const sortLabel = sort === "stars" ? "by stars" : "recently added";
@@ -230,5 +239,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // ── Start ──────────────────────────────────────────────────────────────────
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+if (process.argv.length > 2) {
+  // Preserve the documented `npx a2asearch-mcp -- <query>` CLI entry point.
+  if (process.argv[2] === "--") process.argv.splice(2, 1);
+  await import("./cli.js");
+} else {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}

@@ -4,7 +4,9 @@
  * Search AI agents, MCP servers, CLI tools and agent skills from your terminal
  */
 
-const API = 'https://www.a2asearch.ai/api/v1';
+import { parseArgs } from 'node:util';
+import { fetchJson } from './lib/api.js';
+import { validateArguments } from './lib/validation.js';
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
 const DIM = '\x1b[2m';
@@ -51,10 +53,10 @@ ${BOLD}Usage:${RESET}
   a2asearch --get <slug>                Get full details for an agent
 
 ${BOLD}Types:${RESET}
-  mcp, cli, agent, skill, a2a
+  mcp, cli, agent, skill, a2a, tool
 
 ${BOLD}Options:${RESET}
-  --limit <n>     Number of results (default: 10)
+  --limit <n>     Number of results (1-20, default: 10)
   --json          Output raw JSON
   --help          Show this help
 
@@ -76,25 +78,16 @@ const TYPE_MAP = {
   tool: 'AI Tool',
 };
 
-async function fetch_json(url) {
-  const res = await fetch(url, { redirect: 'follow' });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
-  }
-  return res.json();
-}
-
 async function search(query, { type, limit, sort } = {}) {
   const params = new URLSearchParams({ per_page: String(limit || 10) });
   if (query) params.set('search', query);
   if (type) params.set('type', type);
   if (sort) params.set('sort', sort);
-  return fetch_json(`${API}/agents?${params}`);
+  return fetchJson(`agents?${params}`);
 }
 
 async function getAgent(slug) {
-  return fetch_json(`${API}/agent/${encodeURIComponent(slug)}`);
+  return fetchJson(`agent/${encodeURIComponent(slug)}`);
 }
 
 function printResults(data) {
@@ -152,33 +145,37 @@ async function main() {
     process.exit(0);
   }
 
-  const jsonOutput = args.includes('--json');
-  const isTop = args.includes('--top');
-  const isNew = args.includes('--new');
-  const getIdx = args.indexOf('--get');
-  const getSlug = getIdx !== -1 ? args[getIdx + 1] : undefined;
-  const typeIdx = args.indexOf('--type');
-  const typeArg = typeIdx !== -1 ? args[typeIdx + 1] : undefined;
-  const limitIdx = args.indexOf('--limit');
-  const limitArg = limitIdx !== -1 ? args[limitIdx + 1] : undefined;
-  const limit = limitArg ? parseInt(limitArg) : 10;
-  const type = typeArg ? (TYPE_MAP[typeArg.toLowerCase()] || typeArg) : undefined;
-
-  // Remaining args = search query (skip flags and their values)
-  const flags = new Set(['--type', '--limit', '--top', '--new', '--get', '--json', '--help', '-h']);
-  const filteredArgs = [];
-  let skipNext = false;
-  for (const a of args) {
-    if (skipNext) { skipNext = false; continue; }
-    if (flags.has(a)) {
-      if (a === '--type' || a === '--limit' || a === '--get') skipNext = true;
-      continue;
-    }
-    filteredArgs.push(a);
-  }
-  const query = filteredArgs.join(' ');
-
   try {
+    const { values, positionals } = parseArgs({
+      args,
+      allowPositionals: true,
+      options: {
+        type: { type: 'string' }, limit: { type: 'string' },
+        top: { type: 'boolean' }, new: { type: 'boolean' },
+        get: { type: 'string' }, json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+      },
+    });
+    const jsonOutput = values.json;
+    const isTop = values.top;
+    const isNew = values.new;
+    const getSlug = values.get?.trim();
+    const type = values.type === undefined ? undefined : (TYPE_MAP[values.type.toLowerCase()] || values.type);
+    const limit = values.limit === undefined ? 10 : Number(values.limit);
+    const query = positionals.join(' ').trim();
+    if ([isTop, isNew, getSlug !== undefined].filter(Boolean).length > 1) {
+      throw new Error('Choose only one of --top, --new, or --get');
+    }
+    if (getSlug !== undefined) {
+      validateArguments('get_agent', { slug: getSlug });
+      if (query || values.type !== undefined || values.limit !== undefined) {
+        throw new Error('--get cannot be combined with a query, --type, or --limit');
+      }
+    } else if (query) {
+      validateArguments('search_agents', { query, type, limit });
+    } else {
+      validateArguments('list_agents', { type, limit, sort: isNew ? 'new' : 'stars' });
+    }
     if (getSlug) {
       const data = await getAgent(getSlug);
       if (jsonOutput) { console.log(JSON.stringify(data, null, 2)); return; }

@@ -10,7 +10,7 @@
 The only unified search engine for the AI agent ecosystem. One package. Every major MCP server, CLI tool, coding agent, and agent skill — indexed and searchable.
 
 ```bash
-npx a2asearch-mcp -- playwright
+npx -y -p a2asearch-mcp a2asearch playwright
 # → Finds playwright MCP server, CLI tools, related agents
 ```
 
@@ -33,6 +33,8 @@ No auth needed. No API key. Free.
 ---
 
 ## Installation
+
+Requires Node.js 22 or newer (Node.js 24 LTS recommended).
 
 ### Claude Desktop
 
@@ -177,9 +179,9 @@ a2asearch --new
 Or without installing:
 
 ```bash
-npx a2asearch-mcp -- playwright
-npx a2asearch-mcp -- --type mcp database
-npx a2asearch-mcp -- --get ollama
+npx -y -p a2asearch-mcp a2asearch playwright
+npx -y -p a2asearch-mcp a2asearch --type mcp database
+npx -y -p a2asearch-mcp a2asearch --get ollama
 ```
 
 ---
@@ -235,3 +237,13 @@ The index is community-maintained. Submissions are reviewed and added within 24�
 ## License
 
 MIT
+
+## Development
+
+```bash
+npm ci
+npm run check
+npm test
+```
+
+Tests cover MCP initialization and tool calls, input validation, API errors and timeouts, and both CLI entry points. Requests time out after 15 seconds; result limits must be integers from 1 to 20.
