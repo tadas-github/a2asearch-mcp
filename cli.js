@@ -7,6 +7,8 @@
 import { parseArgs } from 'node:util';
 import { fetchJson } from './lib/api.js';
 import { validateArguments } from './lib/validation.js';
+import { normalizeAgent } from './lib/catalog.js';
+import { buildSetup } from './lib/setup.js';
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
 const DIM = '\x1b[2m';
@@ -51,12 +53,14 @@ ${BOLD}Usage:${RESET}
   a2asearch --top [--type <type>]       Show top by stars
   a2asearch --new                       Show newest additions
   a2asearch --get <slug>                Get full details for an agent
+  a2asearch --setup <slug>              Get documented setup instructions
 
 ${BOLD}Types:${RESET}
   mcp, cli, agent, skill, a2a, tool
 
 ${BOLD}Options:${RESET}
   --limit <n>     Number of results (1-20, default: 10)
+  --page <n>      Results page (default: 1)
   --json          Output raw JSON
   --help          Show this help
 
@@ -78,8 +82,8 @@ const TYPE_MAP = {
   tool: 'AI Tool',
 };
 
-async function search(query, { type, limit, sort } = {}) {
-  const params = new URLSearchParams({ per_page: String(limit || 10) });
+async function search(query, { type, limit, sort, page = 1 } = {}) {
+  const params = new URLSearchParams({ per_page: String(limit || 10), page: String(page) });
   if (query) params.set('search', query);
   if (type) params.set('type', type);
   if (sort) params.set('sort', sort);
@@ -110,13 +114,16 @@ function printResults(data) {
   console.log(`${DIM}Showing ${agents.length} of ${pagination?.total || agents.length} results${RESET}\n`);
 
   agents.forEach((a, i) => {
+    const entry = normalizeAgent(a);
     const stars = formatStars(a.stars);
     const type = typeLabel(a.type || 'Unknown');
     console.log(`${BOLD}${i + 1}. ${a.name}${RESET} ${type} ${stars ? DIM + stars + RESET : ''}`);
     if (a.description) console.log(`   ${DIM}${truncate(a.description, 90)}${RESET}`);
     if (a.agentCardUrl) console.log(`   ${CYAN}${a.agentCardUrl}${RESET}`);
+    if (entry.slug) console.log(`   ${DIM}Details: --get ${entry.slug} | Setup: --setup ${entry.slug}${RESET}`);
     console.log();
   });
+  if (pagination?.has_next) console.log(`${DIM}More results: repeat with --page ${(pagination.page || 1) + 1}${RESET}`);
 }
 
 function printAgent(data) {
@@ -124,7 +131,7 @@ function printAgent(data) {
   console.log(`\n${BOLD}${a.name}${RESET} ${typeLabel(a.type)}`);
   console.log(`${'─'.repeat(50)}`);
   if (a.description) console.log(`\n${a.description}\n`);
-  if (a.agentCardUrl) console.log(`${BOLD}GitHub:${RESET}     ${CYAN}${a.agentCardUrl}${RESET}`);
+  if (a.agentCardUrl) console.log(`${BOLD}Source:${RESET}     ${CYAN}${a.agentCardUrl}${RESET}`);
   if (a.stars) console.log(`${BOLD}Stars:${RESET}      ⭐ ${a.stars.toLocaleString()}`);
   if (a.forks) console.log(`${BOLD}Forks:${RESET}      🍴 ${a.forks.toLocaleString()}`);
   if (a.languages?.length) console.log(`${BOLD}Languages:${RESET}  ${a.languages.join(', ')}`);
@@ -135,6 +142,15 @@ function printAgent(data) {
     console.log(a.readme.slice(0, 2000) + (a.readme.length > 2000 ? '\n…(truncated)' : ''));
   }
   console.log();
+}
+
+function printSetup(data) {
+  console.log(`${BOLD}Setup for ${data.agent.name}${RESET} (${data.setup.status})`);
+  for (const step of data.setup.next_steps) console.log(`• ${step}`);
+  for (const excerpt of data.setup.excerpts) console.log(`\n${BOLD}${excerpt.heading}${RESET}\n${excerpt.content}${excerpt.truncated ? '\n…(truncated)' : ''}`);
+  for (const example of data.setup.configuration_examples) console.log(`\nConfiguration example (quoted):\n${example.content}`);
+  console.log(`\n${data.setup.limitations.join('\n')}`);
+  console.log(`\nSources:\n${data.setup.sources.map(source => `${source.kind}: ${source.url}`).join('\n')}`);
 }
 
 async function main() {
@@ -150,9 +166,9 @@ async function main() {
       args,
       allowPositionals: true,
       options: {
-        type: { type: 'string' }, limit: { type: 'string' },
+        type: { type: 'string' }, limit: { type: 'string' }, page: { type: 'string' },
         top: { type: 'boolean' }, new: { type: 'boolean' },
-        get: { type: 'string' }, json: { type: 'boolean' },
+        get: { type: 'string' }, setup: { type: 'string' }, json: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
       },
     });
@@ -160,36 +176,43 @@ async function main() {
     const isTop = values.top;
     const isNew = values.new;
     const getSlug = values.get?.trim();
+    const setupSlug = values.setup?.trim();
     const type = values.type === undefined ? undefined : (TYPE_MAP[values.type.toLowerCase()] || values.type);
     const limit = values.limit === undefined ? 10 : Number(values.limit);
+    const page = values.page === undefined ? 1 : Number(values.page);
     const query = positionals.join(' ').trim();
-    if ([isTop, isNew, getSlug !== undefined].filter(Boolean).length > 1) {
-      throw new Error('Choose only one of --top, --new, or --get');
+    if ([isTop, isNew, getSlug !== undefined, setupSlug !== undefined].filter(Boolean).length > 1) {
+      throw new Error('Choose only one of --top, --new, --get, or --setup');
     }
-    if (getSlug !== undefined) {
-      validateArguments('get_agent', { slug: getSlug });
-      if (query || values.type !== undefined || values.limit !== undefined) {
-        throw new Error('--get cannot be combined with a query, --type, or --limit');
+    if (getSlug !== undefined || setupSlug !== undefined) {
+      validateArguments(setupSlug !== undefined ? 'get_setup' : 'get_agent', { slug: setupSlug ?? getSlug });
+      if (query || values.type !== undefined || values.limit !== undefined || values.page !== undefined) {
+        throw new Error('--get and --setup cannot be combined with a query, --type, --limit, or --page');
       }
     } else if (query) {
-      validateArguments('search_agents', { query, type, limit });
+      validateArguments('search_agents', { query, type, limit, page });
     } else {
-      validateArguments('list_agents', { type, limit, sort: isNew ? 'new' : 'stars' });
+      validateArguments('list_agents', { type, limit, page, sort: isNew ? 'new' : 'stars' });
     }
-    if (getSlug) {
+    if (setupSlug) {
+      const { data: agent } = await getAgent(setupSlug);
+      const data = buildSetup(agent, setupSlug);
+      if (jsonOutput) { console.log(JSON.stringify(data, null, 2)); return; }
+      printSetup(data);
+    } else if (getSlug) {
       const data = await getAgent(getSlug);
       if (jsonOutput) { console.log(JSON.stringify(data, null, 2)); return; }
       printAgent(data);
     } else if (isTop) {
-      const data = await search(query, { type, limit, sort: 'stars' });
+      const data = await search(query, { type, limit, page, sort: 'stars' });
       if (jsonOutput) { console.log(JSON.stringify(data, null, 2)); return; }
       printResults(data);
     } else if (isNew) {
-      const data = await search(query, { type, limit, sort: 'new' });
+      const data = await search(query, { type, limit, page, sort: 'new' });
       if (jsonOutput) { console.log(JSON.stringify(data, null, 2)); return; }
       printResults(data);
     } else if (query || type) {
-      const data = await search(query, { type, limit });
+      const data = await search(query, { type, limit, page });
       if (jsonOutput) { console.log(JSON.stringify(data, null, 2)); return; }
       printResults(data);
     } else {

@@ -1,8 +1,8 @@
 {
   "name": "a2asearch-mcp",
   "mcpName": "io.github.tadas-github/a2asearch-mcp",
-  "version": "1.1.6",
-  "description": "MCP server for searching and discovering AI agents, MCP servers, CLI tools and agent skills via A2ASearch",
+  "version": "1.2.0",
+  "description": "Find AI agents and MCP servers, inspect capabilities and get documented setup instructions via A2ASearch",
   "main": "index.js",
   "type": "module",
   "bin": {
@@ -12,8 +12,9 @@
   "scripts": {
     "start": "node index.js",
     "test": "node --test test/*.test.js",
-    "check": "node --check index.js && node --check cli.js",
-    "prepack": "npm run check && npm test"
+    "check": "node --check index.js && node --check cli.js && node --check lib/catalog.js && node --check lib/setup.js && node --check lib/tools.js",
+    "prepack": "npm run check && npm test",
+    "smoke:live": "node scripts/smoke-live.js"
   },
   "keywords": [
     "mcp",

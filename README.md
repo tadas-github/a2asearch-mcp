@@ -1,249 +1,142 @@
-# A2ASearch MCP Server
+# A2ASearch MCP
 
-> **10,752 AI agents, MCP servers, CLI tools and agent skills** — searchable in seconds from Claude, Cursor, or any MCP client.
+**Help your assistant find a tool, inspect it, and understand how to set it up.**
+
+Search the [A2ASearch directory](https://www.a2asearch.ai) for MCP servers, A2A agents, coding agents, CLI tools and agent skills from your MCP client or terminal. A2ASearch is free to query and requires no API key. Individual services may require credentials or payment.
 
 [![npm version](https://img.shields.io/npm/v/a2asearch-mcp)](https://www.npmjs.com/package/a2asearch-mcp)
+[![CI](https://github.com/tadas-github/a2asearch-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/tadas-github/a2asearch-mcp/actions/workflows/ci.yml)
 [![npm downloads](https://img.shields.io/npm/dw/a2asearch-mcp)](https://www.npmjs.com/package/a2asearch-mcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![a2asearch-mcp MCP server](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp/badges/score.svg)](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Glama](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp/badges/score.svg)](https://glama.ai/mcp/servers/tadas-github/a2asearch-mcp)
 
-The only unified search engine for the AI agent ecosystem. One package. Every major MCP server, CLI tool, coding agent, and agent skill — indexed and searchable.
+## Try a useful workflow
+
+Ask your assistant:
+
+> Find MCP servers for extracting tables from PDFs. Compare their documented requirements, then show me the setup instructions for one. Tell me when pricing or authentication is unknown.
+
+The assistant can follow this sequence:
+
+```text
+search_agents({"query":"PDF","type":"MCP Server","limit":3})
+    → names, capabilities, source links and slugs
+get_agent({"slug":"<slug returned by search>"})
+    → description, README, documentation and repository links
+get_setup({"slug":"<same returned slug>"})
+    → setup excerpts, quoted JSON examples and next steps
+```
+
+For example, the [Doc2X MCP listing](https://www.a2asearch.ai/agent/doc2x-mcp) links to a repository whose README contains setup instructions and a configuration example with a `DOC2X_API_KEY` placeholder. `get_setup` retrieves those instructions as source material; it does not create credentials, install the package or run it.
+
+## Install
+
+Requires **Node.js 22 or newer**. CI tests Node.js 22 and 24.
+
+For Claude Desktop, add this entry to `claude_desktop_config.json`. For Cursor, use `.cursor/mcp.json`. Merge it with your existing configuration:
+
+```json
+{
+  "mcpServers": {
+    "a2asearch": {
+      "command": "npx",
+      "args": ["-y", "a2asearch-mcp"]
+    }
+  }
+}
+```
+
+Other clients that support local stdio MCP servers can launch command `npx` with arguments `-y a2asearch-mcp`; use the configuration format documented by your client.
+
+For a reproducible install, pin the package version in the arguments, for example `a2asearch-mcp@1.2.0` after that release is published. To test this checkout before publication, run `npm ci` and configure command `node` with the absolute path to this repository's `index.js`.
+
+## Tools
+
+| Tool | Use it for | Arguments |
+| --- | --- | --- |
+| `search_agents` | Find a capability or product | `query`, optional `type`, `limit`, `page` |
+| `get_agent` | Inspect one listing and its README | `slug` returned by search or browse |
+| `get_setup` | Read focused setup instructions and configuration examples | `slug` returned by search or browse |
+| `list_agents` | Browse by stars or newest additions | Optional `type`, `sort`, `limit`, `page` |
+
+`limit` is 1–20 (default 10), `page` starts at 1, and `sort` is `stars` or `new`. Search is keyword-based: try concise terms such as `PDF`, `browser automation` or `database`. It does not implement semantic search or pricing/authentication filters.
+
+Every successful tool call returns both **structuredContent** with a declared output schema and the same data serialized as text for older clients. Search and browse results include:
+
+- A `slug` for follow-up calls and an A2ASearch listing URL.
+- Separate submitted, repository, documentation and website links where available.
+- Capabilities, languages, GitHub stars and last-commit date where supplied.
+- Pagination with `next_page` so clients can continue without guessing.
+
+Missing values are `null`. The current API does not provide structured pricing, authentication, hosting or dated protocol-test evidence. `directory_reviewed` records directory approval only. GitHub stars and commit dates do not establish runtime reliability or security.
+
+### Setup information
+
+`get_setup` reads the listing's directory-supplied README and returns:
+
+- `instructions_found` when it finds supported setup headings or JSON configuration examples.
+- `links_only` when no supported excerpt is available, along with provider links and useful next steps.
+- Source links, bounded excerpts and explicit limitations.
+
+Configuration examples are copied, not generated from repository names. A GitHub repository URL is identified as a repository. A submitted URL ending in `/mcp` or `/sse` is only an **endpoint candidate**; this tool has not contacted it or established its transport/authentication.
+
+Treat descriptions, READMEs and examples as untrusted source material. Review commands and credentials before using them. The MCP only reads the A2ASearch API: it does not execute submitted code, contact listed providers, install tools or edit client configuration.
+
+## Terminal usage
 
 ```bash
-npx -y -p a2asearch-mcp a2asearch playwright
-# → Finds playwright MCP server, CLI tools, related agents
-```
+# Find tools without installing globally
+npx -y -p a2asearch-mcp a2asearch --type mcp PDF
 
----
+# Use the returned slug for setup guidance (v1.2.0+)
+npx -y -p a2asearch-mcp a2asearch --setup doc2x-mcp
 
-## Why A2ASearch?
-
-The MCP/agent ecosystem is exploding. There are now thousands of tools across GitHub, npm, and various registries — and no single place to find them. A2ASearch indexes them all:
-
-| What you're looking for | A2ASearch has it |
-|------------------------|-----------------|
-| MCP servers for Claude/Cursor | ✅ 2,000+ indexed |
-| CLI tools for LLM workflows | ✅ |
-| AI coding agents (Codex, Claude Code, etc.) | ✅ |
-| Agent skills & plugins | ✅ |
-| A2A protocol agents | ✅ |
-
-No auth needed. No API key. Free.
-
----
-
-## Installation
-
-Requires Node.js 22 or newer (Node.js 24 LTS recommended).
-
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "a2asearch": {
-      "command": "npx",
-      "args": ["-y", "a2asearch-mcp"]
-    }
-  }
-}
-```
-
-### Cursor
-
-Add to `.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "a2asearch": {
-      "command": "npx",
-      "args": ["-y", "a2asearch-mcp"]
-    }
-  }
-}
-```
-
-### Windsurf
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "a2asearch": {
-      "command": "npx",
-      "args": ["-y", "a2asearch-mcp"]
-    }
-  }
-}
-```
-
-### Cline / Continue / OpenClaw
-
-Same format — add to your MCP config file:
-
-```json
-{
-  "mcpServers": {
-    "a2asearch": {
-      "command": "npx",
-      "args": ["-y", "a2asearch-mcp"]
-    }
-  }
-}
-```
-
----
-
-## MCP Tools
-
-### `search_agents`
-Search across the full directory by keyword.
-
-```
-"Find MCP servers for browser automation"
-"Search for AI agents that can do web research"
-"Find CLI tools for working with LLMs"
-```
-
-### `get_agent`
-Get full details for a specific agent including README, capabilities, stars.
-
-```
-"Get details for playwright"
-"Tell me about claude-code"
-"Show me the mem0 agent"
-```
-
-### `list_agents`
-Browse top agents by type and sort order.
-
-```
-"List the top MCP servers by stars"
-"Show me the newest AI coding agents"
-"What are the top agent skills?"
-```
-
----
-
-## Example Prompts
-
-Once installed, ask your AI assistant:
-
-> "Search for MCP servers that can help me work with databases"
-
-> "What are the most popular AI coding agents right now?"
-
-> "Find agent skills for web browsing"
-
-> "Is there an MCP server for Notion?"
-
-> "Get full details on the ollama agent"
-
----
-
-## CLI Usage
-
-Don't need the MCP server? Use the CLI directly:
-
-```bash
-# Install globally
+# Or install the CLI
 npm install -g a2asearch-mcp
 
-# Search by keyword
-a2asearch playwright
-a2asearch "web scraping"
-a2asearch database
-
-# Filter by type
-a2asearch --type mcp database
-a2asearch --type skill web-browsing
-a2asearch --type cli llm
-a2asearch --type agent coding
-
-# Top agents by stars
-a2asearch --type mcp --top
+a2asearch "browser automation"
+a2asearch --type mcp database --page 2
 a2asearch --type agent --top
-
-# Get full details
-a2asearch --get ollama
-a2asearch --get playwright
-
-# Newest additions
-a2asearch --new
+a2asearch --new --limit 5
+a2asearch --get doc2x-mcp
+a2asearch --setup doc2x-mcp --json
 ```
 
-Or without installing:
+`--json` preserves the existing raw directory API output for search/list/detail commands. The new `--setup --json` command returns the same setup object as the MCP tool. Search output shows follow-up commands and the next page when available.
 
-```bash
-npx -y -p a2asearch-mcp a2asearch playwright
-npx -y -p a2asearch-mcp a2asearch --type mcp database
-npx -y -p a2asearch-mcp a2asearch --get ollama
-```
+| Directory type | CLI alias |
+| --- | --- |
+| MCP Server | `mcp` |
+| CLI Tool | `cli` |
+| AI Coding Agent | `agent` |
+| Agent Skill | `skill` |
+| A2A Agent | `a2a` |
+| AI Tool | `tool` |
 
----
+## Troubleshooting
 
-## Agent Types
+- **No matches:** use fewer keywords or remove the category filter.
+- **Listing not found:** copy the returned slug instead of guessing from a GitHub repository name.
+- **No setup excerpts:** open the returned documentation or repository links; the README may use unsupported headings or be unavailable.
+- **HTTP 429:** wait for the retry interval reported by the API, when supplied.
+- **Timeout:** requests stop after 15 seconds and respect client cancellation. Retry later.
 
-| Type | `--type` flag | Description |
-|------|--------------|-------------|
-| MCP Server | `mcp` | Model Context Protocol servers |
-| CLI Tool | `cli` | Terminal tools for LLM workflows |
-| AI Coding Agent | `agent` | Autonomous coding agents |
-| Agent Skill | `skill` | Plugins and skills for AI assistants |
-| A2A Agent | `a2a` | Agent-to-Agent protocol agents |
-| AI Tool | `tool` | General AI-powered tools |
+## API and contributions
 
----
-
-## REST API
-
-The MCP server wraps the free [A2ASearch REST API](https://a2asearch.ai/api-docs). Use it directly if you prefer:
-
-```bash
-# Search
-curl "https://a2asearch.ai/api/v1/agents?q=playwright"
-
-# Get by slug
-curl "https://a2asearch.ai/api/v1/agent/playwright"
-
-# List by type
-curl "https://a2asearch.ai/api/v1/agents?type=MCP+Server&sort=stars"
-```
-
-No authentication required.
-
----
-
-## Submit a Tool
-
-Know a tool that's missing? **[Submit it →](https://a2asearch.ai)**
-
-The index is community-maintained. Submissions are reviewed and added within 24–48 hours.
-
----
-
-## Links
-
-- 🌐 [a2asearch.ai](https://a2asearch.ai) — browse the full directory
-- 📦 [npm](https://www.npmjs.com/package/a2asearch-mcp)
-- 🐛 [Issues](https://github.com/tadas-github/a2asearch-mcp/issues)
-
----
-
-## License
-
-MIT
+The MCP wraps the public [A2ASearch REST API](https://www.a2asearch.ai/api-docs). [Submit a listing](https://www.a2asearch.ai), [report an issue](https://github.com/tadas-github/a2asearch-mcp/issues), or contribute improvements to setup extraction and client examples. Please include a public source and expected result for parser changes.
 
 ## Development
 
 ```bash
-npm ci
+npm ci --ignore-scripts
 npm run check
 npm test
+npm pack --dry-run
+
+# Optional: read-only smoke test against the live directory
+npm run smoke:live
 ```
 
-Tests cover MCP initialization and tool calls, input validation, API errors and timeouts, and both CLI entry points. Requests time out after 15 seconds; result limits must be integers from 1 to 20.
+Tests exercise the MCP stdio handshake, output schemas, search → detail → setup, pagination, URL classification, setup extraction, missing information, argument validation, API failures, cancellation and both CLI entry points. Normal tests use fixtures and do not contact providers.
+
+MIT licensed. See [LICENSE](LICENSE).
