@@ -12,6 +12,8 @@ globalThis.fetch = async input => {
   if (url.pathname.endsWith('/not-found')) return new Response('{}', { status: 404 });
   if (url.searchParams.get('search') === 'rate-limit') return new Response('{}', { status: 429, headers: { 'retry-after': '30' } });
   if (url.searchParams.get('search') === 'undefined') throw new Error('Missing query reached the API');
+  if (url.searchParams.get('search') === 'degraded') return Response.json({ data: [agent], fallback: true, pagination: { page: 1, total: 1, total_pages: 1, has_next: false } });
+  if (url.pathname.endsWith('/degraded')) return Response.json({ data: { ...agent, readme: '' }, fallback: true });
   if (url.pathname.endsWith('/hosted')) return Response.json({ data: { name: 'Hosted', type: 'MCP Server', agentCardUrl: 'https://example.org/mcp', documentation: 'https://example.org/docs', reviewed: true } });
   if (url.pathname.includes('/agent/')) return Response.json({ data: agent });
   if (url.searchParams.get('search') === 'empty') return Response.json({ data: [], pagination: { total: 0, total_pages: 0, has_next: false } });

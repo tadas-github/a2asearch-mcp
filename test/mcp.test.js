@@ -57,6 +57,13 @@ test('MCP transport, tools, validation and API errors', async t => {
     assert.equal(result.isError, true);
     assert.match(result.content[0].text, /Invalid arguments/);
   }
+  const degraded = await client.callTool({ name: 'search_agents', arguments: { query: 'degraded' } });
+  assert.equal(degraded.isError, undefined);
+  assert.match(degraded.content[0].text, /^Note: the A2ASearch directory is temporarily degraded/);
+  const degradedDetail = await client.callTool({ name: 'get_agent', arguments: { slug: 'degraded' } });
+  assert.match(degradedDetail.content[0].text, /^Note: .*degraded/);
+  const normal = await client.callTool({ name: 'search_agents', arguments: { query: 'browser' } });
+  assert.doesNotMatch(normal.content[0].text, /degraded/);
   const missing = await client.callTool({ name: 'get_agent', arguments: { slug: 'not-found' } });
   assert.equal(missing.isError, true);
   assert.match(missing.content[0].text, /not found/);
