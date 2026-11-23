@@ -1,0 +1,80 @@
+# Release: bump "version" in package.json and server.json, merge, then
+#   git tag v1.2.3 && git push origin v1.2.3
+# Publishes to npm via trusted publishing (OIDC, no stored token) and then
+# to the official MCP Registry. Safe to re-run: an npm version that is
+# already published is skipped.
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing + MCP Registry OIDC login
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@^11.5.1
+
+      - name: Check tag matches package.json and server.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          srv="$(node -p "require('./server.json').version")"
+          srv_pkg="$(node -p "require('./server.json').packages[0].version")"
+          echo "tag=$tag package.json=$pkg server.json=$srv/$srv_pkg"
+          [ "$tag" = "$pkg" ] && [ "$tag" = "$srv" ] && [ "$tag" = "$srv_pkg" ] || {
+            echo "::error::Tag v$tag does not match package.json ($pkg) / server.json ($srv, $srv_pkg)"; exit 1; }
+
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+
+      - name: Publish to npm
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already on npm; skipping"
+          else
+            npm publish --ignore-scripts
+          fi
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Publish to MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
