@@ -42,6 +42,9 @@ jobs:
           [ "$tag" = "$pkg" ] && [ "$tag" = "$srv" ] && [ "$tag" = "$srv_pkg" ] || {
             echo "::error::Tag v$tag does not match package.json ($pkg) / server.json ($srv, $srv_pkg)"; exit 1; }
 
+      - name: Check server.json description length (MCP Registry max 100)
+        run: node -e "const d=require('./server.json').description; if (d.length > 100) { console.error('::error::server.json description is ' + d.length + ' chars (max 100)'); process.exit(1) }"
+
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test

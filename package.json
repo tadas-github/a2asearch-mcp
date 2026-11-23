@@ -1,7 +1,7 @@
 {
   "name": "a2asearch-mcp",
   "mcpName": "io.github.tadas-github/a2asearch-mcp",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Find AI agents and MCP servers, inspect capabilities and get documented setup instructions via A2ASearch",
   "main": "index.js",
   "type": "module",

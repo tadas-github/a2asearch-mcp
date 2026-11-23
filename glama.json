@@ -1,7 +1,7 @@
 {
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "name": "a2asearch-mcp",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "MCP server for searching and discovering AI agents, MCP servers, CLI tools and agent skills via the A2ASearch directory (a2asearch.ai)",
   "author": "tadas-github",
   "license": "MIT",
