@@ -14,6 +14,10 @@ const server = new Server({ name: 'a2asearch', version }, { capabilities: { tool
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 
+// The directory sets `fallback: true` when it is serving a small built-in
+// set of popular listings because its database is unavailable.
+const DEGRADED = 'Note: the A2ASearch directory is temporarily degraded and is returning a limited set of popular listings; READMEs may be missing. Retry later for full results.\n';
+
 // Include serialized data for clients that do not consume structuredContent.
 function result(data, summary) {
   return { content: [{ type: 'text', text: `${summary}\n\n${JSON.stringify(data)}` }], structuredContent: data };
@@ -24,18 +28,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   try {
     const args = validateArguments(name, rawArgs);
     if (name === 'get_agent' || name === 'get_setup') {
-      let agent;
+      let agent, degraded;
       try {
-        ({ data: agent } = await fetchJson(`agent/${encodeURIComponent(args.slug)}`, { signal: extra.signal }));
+        ({ data: agent, fallback: degraded } = await fetchJson(`agent/${encodeURIComponent(args.slug)}`, { signal: extra.signal }));
       } catch (error) {
         if (error.status === 404) throw new Error(`Agent "${args.slug}" not found. Use a slug returned by search_agents.`);
         throw error;
       }
       if (name === 'get_setup') {
         const data = buildSetup(agent, args.slug);
-        return result(data, `Setup for ${data.agent.name}: ${data.setup.status}. Quoted source material; review before use.`);
+        return result(data, `${degraded ? DEGRADED : ''}Setup for ${data.agent.name}: ${data.setup.status}. Quoted source material; review before use.`);
       }
-      return result({ agent: normalizeAgent(agent, { detail: true, requestedSlug: args.slug }) }, `Details for ${agent.name}`);
+      return result({ agent: normalizeAgent(agent, { detail: true, requestedSlug: args.slug }) }, `${degraded ? DEGRADED : ''}Details for ${agent.name}`);
     }
 
     const params = new URLSearchParams({ per_page: String(args.limit), page: String(args.page) });
@@ -48,7 +52,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
       ? `Found ${data.pagination.total ?? data.agents.length} results for "${args.query}". Showing page ${args.page}.`
       : `Top ${data.agents.length} ${args.type || 'agents'} ${args.sort === 'new' ? 'recently added' : 'by stars'}. Page ${args.page}.`;
     const hint = data.agents.length ? ' Use the returned slug with get_agent or get_setup.' : ' Try fewer task keywords or remove the type filter.';
-    return result(data, summary + hint);
+    return result(data, (response.fallback ? DEGRADED : '') + summary + hint);
   } catch (error) {
     return { content: [{ type: 'text', text: `Error: ${error.message}` }], isError: true };
   }
