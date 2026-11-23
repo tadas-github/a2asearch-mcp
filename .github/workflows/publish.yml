@@ -59,6 +59,20 @@ jobs:
             npm publish --ignore-scripts
           fi
 
+      # npm can take several minutes to serve a new version, and the MCP
+      # Registry rejects versions it can't see on npm yet.
+      - name: Wait for the version to be visible on npm
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          for i in $(seq 1 60); do
+            if [ "$(npm view "$name@$version" version --prefer-online 2>/dev/null)" = "$version" ]; then
+              echo "$name@$version is visible on npm"; exit 0
+            fi
+            echo "waiting for $name@$version on npm ($i/60)"; sleep 15
+          done
+          echo "::error::$name@$version did not appear on npm within 15 minutes"; exit 1
+
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
