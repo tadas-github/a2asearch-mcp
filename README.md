@@ -139,4 +139,14 @@ npm run smoke:live
 
 Tests exercise the MCP stdio handshake, output schemas, search → detail → setup, pagination, URL classification, setup extraction, missing information, argument validation, API failures, cancellation and both CLI entry points. Normal tests use fixtures and do not contact providers.
 
+## Releasing
+
+Bump `version` in `package.json` and in `server.json` (both fields), merge to `main`, then push a matching tag:
+
+```bash
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+The [Publish workflow](.github/workflows/publish.yml) checks that the tag matches both files, runs the tests, publishes to npm through trusted publishing (no npm token stored) and then updates the [MCP Registry](https://registry.modelcontextprotocol.io) listing.
+
 MIT licensed. See [LICENSE](LICENSE).
